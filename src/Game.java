@@ -1,86 +1,168 @@
+import java.util.Scanner;
+
 /**
- * Die Klasse {@code Game} steuert den gesamten Spielfluss des Tic-Tac-Toe-Spiels.
+ * Controls the flow of a Tic-Tac-Toe match.
  * <p>
- * Sie verwaltet das Spielfeld ({@link Board}), die Spieler ({@link Player}) sowie den aktuellen Spielzustand.
- * Die Klasse koordiniert die Züge der Spieler, überprüft, ob das Spiel beendet ist, und bestimmt den Gewinner.
- * Zudem interagiert sie mit der Klasse {@code I18N}, um sprachabhängige Ausgaben anzuzeigen.
+ * The {@code Game} class keeps references to the {@link Board}, the two {@link Player} objects,
+ * and the internationalization helper {@link I18N}. It handles switching turns, validating moves,
+ * and announcing the result at the end of the match.
  * </p>
- *
- * <p><b>Gespeicherte Informationen:</b> Referenzen auf das Spielfeld, den aktuellen Spieler sowie beide Spielerobjekte.</p>
- *
- * @author team02
- * @version 1.0
  */
 public class Game {
+    /** Playing field used for the current match. */
     private Board board;
+    /** Player who is currently taking a turn. */
     private Player currentPlayer;
+    /** Player using the first symbol, usually X. */
     private Player player1;
+    /** Player using the second symbol, usually O. */
     private Player player2;
+    /** Stores the winner after the game ends, or {@code null} for a draw. */
+    private Player winner;
+    /** Internationalization helper used for localized messages. */
+    private I18N i18n;
+    /** Shared scanner instance used to read console input. */
+    private Scanner scanner;
 
     /**
-     * Erstellt ein neues {@code Game}-Objekt mit zwei Spielern.
+     * Creates a new game with two players, an internationalization helper, and an input scanner.
      *
-     * @param player1 der erste Spieler (z. B. mit Symbol "X")
-     * @param player2 der zweite Spieler (z. B. mit Symbol "O")
+     * @param player1 the first player (typically using symbol "X")
+     * @param player2 the second player (typically using symbol "O")
+     * @param i18n    helper object used to print localized text
+     * @param scanner shared scanner used to read user input
      */
-    public Game(Player player1, Player player2) {
+    public Game(Player player1, Player player2, I18N i18n, Scanner scanner) {
         this.player1 = player1;
         this.player2 = player2;
+        this.i18n = i18n;
+        this.scanner = (scanner != null) ? scanner : new Scanner(System.in);
     }
 
     /**
-     * Startet das Spiel, initialisiert das Spielfeld
-     * und legt den ersten Spieler fest.
+     * Starts the game by initializing the board and running the game loop.
      */
     public void start() {
-        // TODO: Implementierung hinzufügen
+        this.board = new Board();
+        this.board.reset();
+        this.currentPlayer = player1;
+        this.winner = null;
+
+        System.out.println(i18n.printVocab("welcome"));
+        board.display();
+
+        while (true) {
+            System.out.println(String.format(i18n.printVocab("player_turn"), currentPlayer.getName()));
+            String input = getInput();
+
+            if (!validateInput(input)) {
+                System.out.println(i18n.printVocab("invalid_move"));
+                continue;
+            }
+
+            String[] parts = input.split(",");
+            int row = Integer.parseInt(parts[0].trim()) - 1;
+            int col = Integer.parseInt(parts[1].trim()) - 1;
+
+            if (!board.makeMove(row, col, currentPlayer)) {
+                System.out.println(i18n.printVocab("invalid_move"));
+                continue;
+            }
+
+            board.display();
+
+            String winningSymbol = board.checkWin();
+            if (!winningSymbol.isEmpty()) {
+                winner = winningSymbol.equals(player1.getSymbol()) ? player1 : player2;
+                break;
+            }
+
+            if (board.isFull()) {
+                break;
+            }
+
+            switchPlayer();
+        }
+
+        if (winner != null) {
+            System.out.println(String.format(i18n.printVocab("winner"), winner.getName()));
+        } else {
+            System.out.println(i18n.printVocab("draw"));
+        }
+        System.out.println(i18n.printVocab("goodbye"));
     }
 
     /**
-     * Wechselt den aktuellen Spieler nach jedem Zug.
+     * Switches the current player after a successful move.
      */
     public void switchPlayer() {
-        // TODO: Implementierung hinzufügen
+        currentPlayer = (currentPlayer == player1) ? player2 : player1;
     }
 
     /**
-     * Überprüft, ob das Spiel beendet ist,
-     * z. B. durch Sieg oder Unentschieden.
+     * Checks whether the game is over either by a win or a draw.
      *
-     * @return {@code true}, wenn das Spiel vorbei ist; sonst {@code false}
+     * @return {@code true} if the game has finished; otherwise {@code false}
      */
     public boolean isOver() {
-        return false;
+        if (board == null) {
+            return false;
+        }
+        if (winner != null) {
+            return true;
+        }
+        String winningSymbol = board.checkWin();
+        if (!winningSymbol.isEmpty()) {
+            winner = winningSymbol.equals(player1.getSymbol()) ? player1 : player2;
+            return true;
+        }
+        return board.isFull();
     }
 
     /**
-     * Gibt den Gewinner des Spiels zurück, falls vorhanden.
+     * Returns the winner of the game, if any.
      *
-     * @return der Gewinner oder {@code null}, falls es keinen gibt
+     * @return the winner or {@code null} when the match ended in a draw
      */
     public Player getWinner() {
-        return null;
+        return winner;
     }
 
     /**
-     * Fordert eine Eingabe vom aktuellen Spieler an,
-     * z. B. die gewünschte Position auf dem Spielfeld.
+     * Reads input from the current player.
      *
-     * @return der eingegebene String (z. B. "1,2")
+     * @return the raw input string (e.g., {@code "1,2"})
      */
     public String getInput() {
-        return null;
+        return scanner.nextLine().trim();
     }
 
     /**
-     * Überprüft, ob die vom Spieler eingegebene Eingabe gültig ist.
-     * <p>
-     * Eine gültige Eingabe muss im Spielfeld liegen und darf kein bereits belegtes Feld betreffen.
-     * </p>
+     * Validates the user input.
+     * <p>A valid input follows the pattern {@code row,col} where row and column are integers
+     * between 1 and the current board size.</p>
      *
-     * @return {@code true}, wenn die Eingabe gültig ist; sonst {@code false}
+     * @param input raw input entered by the user
+     * @return {@code true} if the input is valid; otherwise {@code false}
      */
-    public boolean validateInput() {
-        return false;
+    public boolean validateInput(String input) {
+        if (board == null) {
+            return false;
+        }
+        if (input == null || input.isEmpty()) {
+            return false;
+        }
+        String[] parts = input.split(",");
+        if (parts.length != 2) {
+            return false;
+        }
+        try {
+            int row = Integer.parseInt(parts[0].trim());
+            int col = Integer.parseInt(parts[1].trim());
+            int size = board.getSize();
+            return row >= 1 && row <= size && col >= 1 && col <= size && board.isCellEmpty(row - 1, col - 1);
+        } catch (NumberFormatException exception) {
+            return false;
+        }
     }
 }

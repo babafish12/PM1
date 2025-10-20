@@ -6,7 +6,6 @@ public class Player {
 
     /** The name of the player. */
     private String name;
-
     /** The symbol associated with the player (e.g., "X" or "O"). */
     private String symbol;
 
@@ -19,5 +18,23 @@ public class Player {
     public Player(String name, String symbol) {
         this.name = name;
         this.symbol = symbol;
+    }
+
+    /**
+     * Returns the player's name.
+     *
+     * @return the name of the player
+     */
+    public String getName() {
+        return name;
+    }
+
+    /**
+     * Returns the symbol used by the player.
+     *
+     * @return the symbol as a {@code String}
+     */
+    public String getSymbol() {
+        return symbol;
     }
 }
